@@ -49,7 +49,7 @@ function lib:_BuildCache()
 		weaponAbilities = weaponAbilities,
     }
 	
-	u.FireCallbacks(prev, c)
+	u.CheckForChanges(prev, c)
 
     lib._state.cache = c
 	d(zo_strformat("Building cache took <<1>>ms", GetFrameTimeMilliseconds()-time))

@@ -302,10 +302,6 @@ local function DidSkillLinesChange(prev, new)
     return false
 end
 
-function u.DidSkillLinesChange(prev, new)
-	return DidSkillLinesChange(prev, new)
-end
-
 local function DidAbilitiesChange(prev, new)
     if not next(prev) or not prev.availableAbilities then
         return true
@@ -331,10 +327,6 @@ local function DidAbilitiesChange(prev, new)
     end
 
     return false
-end
-
-function u.DidAbilitiesChange(prev, new)
-	return DidAbilitiesChange(prev, new)
 end
 
 local function DidSlottedAbilitiesChange(prev, new)
@@ -372,8 +364,24 @@ local function DidSlottedAbilitiesChange(prev, new)
 	return false
 end
 
-function u.DidSlottedAbilitiesChange(prev, new)
-	return DidSlottedAbilitiesChange(prev, new)
+local function DidWeaponAbilitiesChange(prev, new)
+	if not next(prev) then
+        return true
+    end
+	
+	for id in pairs(prev) do
+		if not new[id] then
+			return true
+		end
+	end
+	
+	for id in pairs(new) do
+		if not prev[id] then
+			return true
+		end
+	end
+	
+	return false
 end
 
 -- local function FireCallbacks(eventName)
@@ -385,7 +393,7 @@ end
     -- end
 -- end
 
-local function FireCallbacks(prev, cache)
+local function CheckForChanges(prev, cache)
 	if DidSkillLinesChange(prev.skillLines, cache.skillLines) then
 		-- FireCallbacks(SKILLLINES_CHANGED)
 		d("SkillLines changed")
@@ -398,8 +406,12 @@ local function FireCallbacks(prev, cache)
 		-- FireCallbacks(SLOTTED_ABILITIES_CHANGED)
 		d("Slotted abilities changed")
 	end
+	if DidWeaponAbilitiesChange(prev.weaponAbilities, cache.weaponAbilities) then
+		-- FireCallbacks(WEAPON_ABILITIES_CHANGED)
+		d("Weapon abilities changed")
+	end
 end
 
-function u.FireCallbacks(prev, cache)
-	return FireCallbacks(prev, cache)
+function u.CheckForChanges(prev, cache)
+	return CheckForChanges(prev, cache)
 end
