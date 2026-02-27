@@ -1,16 +1,7 @@
 -- SPDX-FileCopyrightText: 2026 barny
 -- SPDX-License-Identifier: Artistic-2.0
 
-local LIB_NAME = "LibAbilities"
-
--- Version protection
-local existing = _G[LIB_NAME]
-if existing and existing.version and existing.version >= LIB_VERSION then
-    return
-end
-
-local lib = existing or {}
-_G[LIB_NAME] = lib
+local lib = LibAbilities or {}
 
 lib._constants = { abilities = {}, strings = {}, events = {} }
 local a = lib._constants.abilities
@@ -23,10 +14,14 @@ local e = lib._constants.events
 
 local ABILITIES_CHANGED = 1
 local SKILLLINES_CHANGED = 2
+local SLOTTED_ABILITIES_CHANGED = 3
+local WEAPON_ABILITIES_CHANGED = 4
 	
 e = {
-	["ABILITIES_CHANGED"] = ABILITIES_CHANGED,
-	["SKILLLINES_CHANGED"] = SKILLLINES_CHANGED,
+	ABILITIES_CHANGED = ABILITIES_CHANGED,
+	SKILLLINES_CHANGED = SKILLLINES_CHANGED,
+	SLOTTED_ABILITIES_CHANGED = SLOTTED_ABILITES_CHANGED,
+	WEAPON_ABILITIES_CHANGED = WEAPON_ABILITIES_CHANGED,
 }
 
 ------------------------------------------------------

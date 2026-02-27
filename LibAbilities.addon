@@ -5,7 +5,7 @@
 ## AddOnVersion: 1
 ## APIVersion: 101048 101049
 ## IsLibrary: true
-## DependsOn:
+## DependsOn: LibDebugLogger>=274
 
 ; This Add-on is not created by, affiliated with or sponsored by ZeniMax
 ; Media Inc. or its affiliates. The Elder Scrolls® and related logos are
@@ -13,7 +13,7 @@
 ; States and/or other countries. All rights reserved.
 ; You can read the full terms at https://account.elderscrollsonline.com/add-on-terms
 
+main.lua
 constants.lua
 util.lua
-main.lua
 api.lua
