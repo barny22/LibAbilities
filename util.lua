@@ -103,6 +103,7 @@ function u.CacheAbility(id)
 end
 
 local function GetSkillLineData(prevSL)
+	info("Starting skillLine caching process")
 	local sl = {
 		skillLineIds = {},
 		skillLineNames = {},
@@ -123,6 +124,8 @@ local function GetSkillLineData(prevSL)
                 local skillLineId = GetSkillLineId(skillType, skillLineIndex)
 
                 local name = prevSL.skillLineNames and prevSL.skillLineNames[skillLineId] or zo_strformat(SI_SKILL_LINE_TOOLTIP_NAME, GetSkillLineNameById(skillLineId))
+				
+				info(string.format("Caching skillLine %s", name)
                 
 				if skillType == SKILL_TYPE_CLASS then
 					isClassSkillLine = true
@@ -155,6 +158,7 @@ function u.GetSkillLineData(prevSL)
 end
 
 local function GetAbilityData(prevA, skillLineIds)
+	info("Starting ability caching process")
 	local a = {
 		availableActiveAbilities = {},
 		availablePassives = {},
@@ -176,9 +180,12 @@ local function GetAbilityData(prevA, skillLineIds)
 				
 				aName = prevA.availableAbilities and prevA.availableAbilities[abilityId] and prevA.availableAbilities[abilityId].name or zo_strformat(SI_ABILITY_NAME, aName)
 				
+				info(string.format("Caching ability '%s' ID: %d", aName, abilityId))
+				
 				local ability = prevA.availableAbilities and prevA.availableAbilities[abilityId] or {}
 
 				if IsAbilityPassive(abilityId) then
+					info("Ability is passive ability")
 					if not next(ability) then
 						ability = { 
 							name = aName,
@@ -199,6 +206,7 @@ local function GetAbilityData(prevA, skillLineIds)
 					a.availableAbilities[abilityId] = ability
 					a.availableAbilities[abilityId].isPassive = true
 				else
+					info("Ability is active ability")
 					if not next(ability) then
 						ability = CacheAbility(abilityId)
 						ability.abilityIndex = abilityIndex
@@ -233,6 +241,7 @@ function u.GetAbilityData(prevA, skillLineIds)
 end
 
 local function GetSlottedAbilities(abilities, skillLineIds)
+	info("Starting slotted ability caching process")
 	local actionSlots = { frontbar = {}, backbar = {}, list = {} }  -- Create a table to store action slots
 
     for bar = 0, 1 do
@@ -243,19 +252,21 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 			local actualSlot = slot - 2
 			if id ~= 0 then
 				local ability = abilities[id] 
-				-- if not ability then
-					-- ability = CacheAbility(id)
-					-- local _,index = GetAbilityProgressionXPInfoFromAbilityId(id)
-					-- ability.skillType, ability.skillLineIndex, ability.skillIndex = GetSkillAbilityIndicesFromProgressionIndex(index)
-					-- ability.skillLineId = GetSkillLineId(ability.skillType, ability.skillLineIndex)
-					-- ability.skillTypeString = str.SKILL_TYPE_STRING[skillType]
-					-- if skillType == SKILL_TYPE_CLASS then
-						-- ability.classId = skillLineIds[ability.skillLineId].classId
-						-- ability.class = skillLineIds[ability.skillLineId].classString
-					-- end
-					-- abilities[id] = ability
-					-- skillLineIds[ability.skillLineId].abilities[id] = ability
-				-- end
+				if not ability then
+					dbg(string.format("Couldn't find slotted ability in cache. Will cache seperately."))
+					ability = CacheAbility(id)
+					local _,index = GetAbilityProgressionXPInfoFromAbilityId(id)
+					ability.skillType, ability.skillLineIndex, ability.skillIndex = GetSkillAbilityIndicesFromProgressionIndex(index)
+					ability.skillLineId = GetSkillLineId(ability.skillType, ability.skillLineIndex)
+					ability.skillTypeString = str.SKILL_TYPE_STRING[skillType]
+					if skillType == SKILL_TYPE_CLASS then
+						ability.classId = skillLineIds[ability.skillLineId].classId
+						ability.class = skillLineIds[ability.skillLineId].classString
+					end
+					abilities[id] = ability
+					skillLineIds[ability.skillLineId].abilities[id] = ability
+					dbg(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
+				end
 				if bar == 0 then
 					actionSlots.frontbar[actualSlot] = ability
 					ability.slot = string.format("Frontbar %d", actualSlot)
@@ -276,6 +287,7 @@ function u.GetSlottedAbilities(abilities)
 end
 
 local function GetWeaponAbilities(prev)
+	info("Starting weapon ability caching process")
 	local wa = {}
 	
 	for bar = 0, 1 do
@@ -474,6 +486,10 @@ end
 
 function lib:_RegisterEvents()	
     EVENT_MANAGER:RegisterForEvent(self.name, EVENT_SKILL_RESPEC_RESULT, function() -- triggers after a respec or when changing abilities on hotbars
+        self:_BuildCache()
+    end)
+	
+    EVENT_MANAGER:RegisterForEvent(self.name, EVENT_SKILLS_FULL_UPDATE, function() -- triggers after switching max resources to update ability costs. probably also after some sort of transformation
         self:_BuildCache()
     end)
 
