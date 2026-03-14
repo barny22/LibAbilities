@@ -17,6 +17,8 @@ _G[LIB_NAME] = lib
 lib._state = {
 	initialized = false,
 	cache = { skillLines = {}, abilities = {}, actionSlots = {}, weaponAbilities = {} },
+	weaponSwap = 0,
+	lastCache = { complete = 0, weaponAbilities = 0 },
 	callbacks = {},
 }
 
@@ -24,11 +26,19 @@ lib._state = {
 -- Initialization
 ------------------------------------------------------
 
+function lib:_CreateLoggers()
+	self._loggers = {}
+	self._loggers.log = LibDebugLogger("LibAbilities")
+	self._loggers.slLog = self._loggers.log:Create("SkillLines")
+	self._loggers.aLog = self._loggers.log:Create("Abilities")
+	self._loggers.asLog = self._loggers.log:Create("ActionSlots")
+end
+
 function lib:_Initialize()
     if self._state.initialized then return end
     self._state.initialized = true
 	
-	self.log = LibDebugLogger("LibAbilities")
+	self:_CreateLoggers()
 
     self:_BuildCache()
 	

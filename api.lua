@@ -3,6 +3,18 @@
 
 local lib = LibAbilities or {}
 
+local function info(arg)
+	return lib._loggers.log:Info(arg)
+end
+
+local function dbg(arg)
+	return lib._loggers.log:Debug(arg)
+end
+
+local function warn(arg)
+	return lib._loggers.log:Warn(arg)
+end
+
 local function GetCache()
 	return lib._state.cache
 end
@@ -97,7 +109,16 @@ end
 -- CALLBACKS
 ------------------------------
 
-function lib.RegisterCallback(eventName, func)
+function lib.RegisterCallback(eventName, callBackName, func)
 	if not callbacks[eventName] then callbacks[eventName] = {} end
-	table.insert(callbacks[eventName], func)
+	if type(func) ~= "function" then
+		warn(string.format("Need function to register callback! You tried to register a %s! No callback was registered", type(func)))
+		return
+	elseif not lib._constants.events[eventName] then
+		warn("No such eventName found! No callback was registered")
+		return
+	end
+	local callback = {callBackName = callBackName, func = func}
+	table.insert(callbacks[eventName], callback)
+	dbg(string.format("Callback successfully registered for %s by %s.", eventName, callBackName))
 end

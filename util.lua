@@ -9,17 +9,63 @@ local a = lib._constants.abilities
 local str = lib._constants.strings
 local e = lib._constants.events
 
+-------------------------------------------------------
+-- Loggers
+-------------------------------------------------------
+
 local function info(arg)
-	return lib.log:Info(arg)
+	return lib._loggers.log:Info(arg)
 end
 
 local function dbg(arg)
-	return lib.log:Debug(arg)
+	return lib._loggers.log:Debug(arg)
+end
+
+local function warn(arg)
+	return lib._loggers.log:Warn(arg)
+end
+
+local function slinfo(arg)
+	return lib._loggers.slLog:Info(arg)
+end
+
+local function sldbg(arg)
+	return lib._loggers.slLog:Debug(arg)
+end
+
+local function slwarn(arg)
+	return lib._loggers.slLog:Warn(arg)
+end
+
+local function ainfo(arg)
+	return lib._loggers.aLog:Info(arg)
+end
+
+local function adbg(arg)
+	return lib._loggers.aLog:Debug(arg)
+end
+
+local function awarn(arg)
+	return lib._loggers.aLog:Warn(arg)
+end
+
+local function asinfo(arg)
+	return lib._loggers.asLog:Info(arg)
+end
+
+local function asdbg(arg)
+	return lib._loggers.asLog:Debug(arg)
+end
+
+local function aswarn(arg)
+	return lib._loggers.asLog:Warn(arg)
 end
 
 ------------------------------------------------------
 -- Internal utility
 ------------------------------------------------------
+
+local GetFrameTimeMilliseconds = GetFrameTimeMilliseconds
 
 local GetAbilityBuffType = GetAbilityBuffType
 local GetAbilityCastInfo = GetAbilityCastInfo
@@ -103,7 +149,7 @@ function u.CacheAbility(id)
 end
 
 local function GetSkillLineData(prevSL)
-	info("Starting skillLine caching process")
+	sldbg("Starting skillLine caching process")
 	local sl = {
 		skillLineIds = {},
 		skillLineNames = {},
@@ -125,7 +171,7 @@ local function GetSkillLineData(prevSL)
 
                 local name = prevSL.skillLineNames and prevSL.skillLineNames[skillLineId] or zo_strformat(SI_SKILL_LINE_TOOLTIP_NAME, GetSkillLineNameById(skillLineId))
 				
-				info(string.format("Caching skillLine %s", name)
+				slinfo(string.format("Caching skillLine %s", name))
                 
 				if skillType == SKILL_TYPE_CLASS then
 					isClassSkillLine = true
@@ -158,7 +204,7 @@ function u.GetSkillLineData(prevSL)
 end
 
 local function GetAbilityData(prevA, skillLineIds)
-	info("Starting ability caching process")
+	adbg("Starting ability caching process")
 	local a = {
 		availableActiveAbilities = {},
 		availablePassives = {},
@@ -170,26 +216,34 @@ local function GetAbilityData(prevA, skillLineIds)
 		local skillType, skillLineIndex, isClassSkillLine, classId, classString, skillTypeString = sl.skillType, sl.skillLineIndex, sl.isClassSkillLine, sl.classId, sl.classString, sl.skillTypeString
 		
 		for skillIndex = 1, GetNumSkillAbilities(skillType, skillLineIndex) do
-			local aName, _, _, _, _, purchased = GetSkillAbilityInfo(skillType, skillLineIndex, skillIndex)
+			local aName, _, _, isPassive, _, purchased, progressionIndex, rank = GetSkillAbilityInfo(skillType, skillLineIndex, skillIndex)
+			
+			-- warn(string.format("Current variables being used aName = %s, purchased = %s, skillType = %s, skillLineIndex = %d, skillIndex = %d", aName, tostring(purchased), skillTypeString, skillLineIndex, skillIndex))
 
 			if purchased then
-				local progressionIndex = GetProgressionSkillProgressionIndex(skillType, skillLineIndex, skillIndex)
-				local _,morph,rank = GetAbilityProgressionInfo(progressionIndex)
-				local _,_,abilityIndex = GetAbilityProgressionAbilityInfo(progressionIndex,morph,rank)
-				local abilityId = GetAbilityIdByIndex(abilityIndex)
+				local abilityId
+				if progressionIndex then
+					local _,morph,_ = GetAbilityProgressionInfo(progressionIndex)
+					local _,_,abilityIndex = GetAbilityProgressionAbilityInfo(progressionIndex,morph,rank)
+					abilityId = GetAbilityIdByIndex(abilityIndex)
+				else
+					abilityId = GetSkillAbilityId(skillType, skillLineIndex, skillIndex)
+				end
 				
 				aName = prevA.availableAbilities and prevA.availableAbilities[abilityId] and prevA.availableAbilities[abilityId].name or zo_strformat(SI_ABILITY_NAME, aName)
 				
-				info(string.format("Caching ability '%s' ID: %d", aName, abilityId))
+				ainfo(string.format("Caching ability '%s' ID: %d", aName, abilityId))
 				
 				local ability = prevA.availableAbilities and prevA.availableAbilities[abilityId] or {}
 
-				if IsAbilityPassive(abilityId) then
-					info("Ability is passive ability")
+				if isPassive then
+					ainfo("Ability is passive ability")
 					if not next(ability) then
 						ability = { 
 							name = aName,
+							id = abilityId,
 							abilityIndex = abilityIndex,
+							rank = rank,
 							skillIndex = skillIndex,
 							skillLineId = id,
 							skillLineIndex = skillLineIndex,
@@ -206,7 +260,7 @@ local function GetAbilityData(prevA, skillLineIds)
 					a.availableAbilities[abilityId] = ability
 					a.availableAbilities[abilityId].isPassive = true
 				else
-					info("Ability is active ability")
+					ainfo("Ability is active ability")
 					if not next(ability) then
 						ability = CacheAbility(abilityId)
 						ability.abilityIndex = abilityIndex
@@ -241,7 +295,7 @@ function u.GetAbilityData(prevA, skillLineIds)
 end
 
 local function GetSlottedAbilities(abilities, skillLineIds)
-	info("Starting slotted ability caching process")
+	asdbg("Starting slotted ability caching process")
 	local actionSlots = { frontbar = {}, backbar = {}, list = {} }  -- Create a table to store action slots
 
     for bar = 0, 1 do
@@ -253,7 +307,7 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 			if id ~= 0 then
 				local ability = abilities[id] 
 				if not ability then
-					dbg(string.format("Couldn't find slotted ability in cache. Will cache seperately."))
+					aswarn("Couldn't find slotted ability in cache. Will cache seperately.")
 					ability = CacheAbility(id)
 					local _,index = GetAbilityProgressionXPInfoFromAbilityId(id)
 					ability.skillType, ability.skillLineIndex, ability.skillIndex = GetSkillAbilityIndicesFromProgressionIndex(index)
@@ -265,8 +319,9 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 					end
 					abilities[id] = ability
 					skillLineIds[ability.skillLineId].abilities[id] = ability
-					dbg(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
+					aswarn(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
 				end
+				asinfo(string.format("Caching slot %d %d - %s (%d)", bar, actualSlot, ability.name, id))
 				if bar == 0 then
 					actionSlots.frontbar[actualSlot] = ability
 					ability.slot = string.format("Frontbar %d", actualSlot)
@@ -287,7 +342,7 @@ function u.GetSlottedAbilities(abilities)
 end
 
 local function GetWeaponAbilities(prev)
-	info("Starting weapon ability caching process")
+	asdbg("Starting weapon ability caching process")
 	local wa = {}
 	
 	for bar = 0, 1 do
@@ -313,6 +368,7 @@ function u.GetWeaponAbilities(prev)
 end
 
 local function DidSkillLinesChange(prev, new)
+	
     if not next(prev) or not prev.skillLineIds then
         return true
     end
@@ -430,31 +486,51 @@ local function FireCallbacks(eventName)
     end
 end
 
-local function CheckForChanges(prev, cache)
-	if DidSkillLinesChange(prev.skillLines, cache.skillLines) then
+local function HandleSkillLineChange(prev, new)
+	if DidSkillLinesChange(prev, new) then
 		info("SkillLines changed")
 		dbg("Trying to fire callback for skillLines")
 		FireCallbacks(e.SKILLLINES_CHANGED)
-	end
-	if DidAbilitiesChange(prev.abilities, cache.abilities) then
-		info("Abilities changed")
-		dbg("Trying to fire callback for abilities")
-		FireCallbacks(e.ABILITIES_CHANGED)
-	end
-	if DidSlottedAbilitiesChange(prev.actionSlots, cache.actionSlots) then
-		info("Slotted abilities changed")
-		dbg("Trying to fire callback for slotted abilities")
-		FireCallbacks(e.SLOTTED_ABILITIES_CHANGED)
-	end
-	if DidWeaponAbilitiesChange(prev.weaponAbilities, cache.weaponAbilities) then
-		info("Weapon abilities changed")
-		dbg("Trying to fire callback for weaponAbilities")
-		FireCallbacks(e.WEAPON_ABILITIES_CHANGED)
+	else
+		info("SkillLines did not change. No need to fire callback")
 	end
 end
 
-function u.CheckForChanges(prev, cache)
-	return CheckForChanges(prev, cache)
+local function HandleAbilityChange(prev, new)
+	if DidAbilitiesChange(prev, new) then
+		info("Abilities changed")
+		dbg("Trying to fire callback for abilities")
+		FireCallbacks(e.ABILITIES_CHANGED)
+	else
+		info("Abilities did not change. No need to fire callback")
+	end
+end
+
+local function HandleSlottedAbilityChange(prev, new)
+	if DidSlottedAbilitiesChange(prev, new) then
+		info("Slotted abilities changed")
+		dbg("Trying to fire callback for slotted abilities")
+		FireCallbacks(e.SLOTTED_ABILITIES_CHANGED)
+	else
+		info("Slotted abilities did not change. No need to fire callback")
+	end
+end
+
+local function HandleWeaponAbilityChange(prev, new)
+	if DidWeaponAbilitiesChange(prev, new) then
+		info("Weapon abilities changed")
+		dbg("Trying to fire callback for weaponAbilities")
+		FireCallbacks(e.WEAPON_ABILITIES_CHANGED)
+	else
+		info("weaponAbilities did not change. No need to fire callback")
+	end
+end
+
+local function CheckForChanges(prev, new)
+	HandleSkillLineChange(prev.skillLines, new.skillLines)
+	HandleAbilityChange(prev.abilities, new.abilities)
+	HandleSlottedAbilityChange(prev.actionSlots, new.actionSlots)
+	HandleWeaponAbilityChange(prev.weaponAbilities, new.weaponAbilities)
 end
 
 ------------------------------------------------------
@@ -463,6 +539,12 @@ end
 
 function lib:_BuildCache()
 	local time = GetFrameTimeMilliseconds()
+	
+	if time == self._state.lastCache.complete then
+		dbg("Building cache not needed, just did that")
+		return
+	end
+	dbg(string.format("Building cache at %d", time))
 	
 	local prev = self._state.cache
 	
@@ -481,7 +563,11 @@ function lib:_BuildCache()
 	CheckForChanges(prev, c)
 
     lib._state.cache = c
-	info("Building cache took %dms", GetFrameTimeMilliseconds()-time)
+	lib._state.lastCache.complete = time
+	lib._state.lastCache.weaponAbilities = time
+	local endTime = GetFrameTimeMilliseconds()
+	dbg(string.format("Building cache finished at %d", endTime))
+	info(string.format("Building cache took %dms", endTime-time))
 end
 
 function lib:_RegisterEvents()	
@@ -489,7 +575,11 @@ function lib:_RegisterEvents()
         self:_BuildCache()
     end)
 	
-    EVENT_MANAGER:RegisterForEvent(self.name, EVENT_SKILLS_FULL_UPDATE, function() -- triggers after switching max resources to update ability costs. probably also after some sort of transformation
+    EVENT_MANAGER:RegisterForEvent(self.name, EVENT_SKILLS_FULL_UPDATE, function() -- triggers after switching max resources to update ability costs
+        self:_BuildCache()
+    end)
+	
+	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_BAR_IS_RESPECCABLE_BAR_STATE_CHANGED, function() -- triggers after transformations
         self:_BuildCache()
     end)
 
@@ -498,11 +588,31 @@ function lib:_RegisterEvents()
 		zo_callLater(function() self:_BuildCache() end, 10)
     end)
 	
+	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTIVE_WEAPON_PAIR_CHANGED, function()
+		-- getting time to prevent unneccesary updates of weaponAbilities
+		lib._state.weaponSwap = GetFrameTimeMilliseconds()
+	end)
+	
 	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_HOTBAR_SLOT_UPDATED, function(_,slot,_,_)
 		-- using this to update light and heavy attack abilities when changing weapons
 		if slot == 2 then
-			local weaponAbilities = self._state.cache.abilities.weaponAbilities or {}
-			GetWeaponAbilities(weaponAbilities)
+			local time = GetFrameTimeMilliseconds()
+			
+			if time == lib._state.lastCache.weaponAbilities then
+				asdbg("Caching weaponAbilities not needed, just did that")
+				return
+			elseif time == lib._state.weaponSwap then
+				asdbg("Weapon swap detected. Caching weaponAbilities not needed")
+				return				
+			end
+			asdbg(string.format("Caching weaponAbilities at %d", time))
+			
+			local prevWA = self._state.cache.weaponAbilities or {}
+			local weaponAbilities = GetWeaponAbilities(prevWA)
+			
+			HandleWeaponAbilityChange(prevWA, weaponAbilities)
+			lib._state.cache.weaponAbilities = weaponAbilities
+			lib._state.lastCache.weaponAbilities = time
 		end
     end)
 end
