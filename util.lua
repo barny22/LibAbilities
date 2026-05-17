@@ -5,9 +5,9 @@ local lib = LibAbilities or {}
 
 lib._util = {}
 local u = lib._util
-local a = lib._constants.abilities
-local str = lib._constants.strings
-local e = lib._constants.events
+local conA = lib._constants.abilities
+local conStr = lib._constants.strings
+local conE = lib._constants.events
 
 -------------------------------------------------------
 -- Loggers
@@ -65,34 +65,36 @@ end
 -- Internal utility
 ------------------------------------------------------
 
-local GetFrameTimeMilliseconds = GetFrameTimeMilliseconds
+-- local GetFrameTimeMilliseconds = GetFrameTimeMilliseconds
 
-local GetAbilityBuffType = GetAbilityBuffType
-local GetAbilityCastInfo = GetAbilityCastInfo
-local GetAbilityDuration = GetAbilityDuration
-local GetAbilityIcon = GetAbilityIcon
-local GetAbilityIdByIndex = GetAbilityIdByIndex
-local GetAbilityIdForCraftedAbilityId = GetAbilityIdForCraftedAbilityId
-local GetAbilityName = GetAbilityName
-local GetAbilityProgressionAbilityId = GetAbilityProgressionAbilityId
-local GetAbilityProgressionAbilityInfo = GetAbilityProgressionAbilityInfo
-local GetAbilityProgressionInfo = GetAbilityProgressionInfo
-local GetAbilityProgressionXPInfoFromAbilityId = GetAbilityProgressionXPInfoFromAbilityId
-local GetAbilityRoles = GetAbilityRoles
-local GetAbilityTargetDescription = GetAbilityTargetDescription
-local GetNumSkillAbilities = GetNumSkillAbilities
-local GetNumSkillTypes = GetNumSkillTypes
-local GetNumSkillLines = GetNumSkillLines
-local GetProgressionSkillProgressionIndex = GetProgressionSkillProgressionIndex
-local GetSkillLineDynamicInfo = GetSkillLineDynamicInfo
-local GetSkillLineId = GetSkillLineId
-local GetSkillLineNameById = GetSkillLineNameById
-local GetSkillAbilityInfo = GetSkillAbilityInfo
-local GetSkillAbilityIndicesFromProgressionIndex = GetSkillAbilityIndicesFromProgressionIndex
+-- local GetAbilityBuffType = GetAbilityBuffType
+-- local GetAbilityCastInfo = GetAbilityCastInfo
+-- local GetAbilityDuration = GetAbilityDuration
+-- local GetAbilityIcon = GetAbilityIcon
+-- local GetAbilityIdByIndex = GetAbilityIdByIndex
+-- local GetAbilityIdForCraftedAbilityId = GetAbilityIdForCraftedAbilityId
+-- local GetAbilityName = GetAbilityName
+-- local GetAbilityProgressionAbilityId = GetAbilityProgressionAbilityId
+-- local GetAbilityProgressionAbilityInfo = GetAbilityProgressionAbilityInfo
+-- local GetAbilityProgressionInfo = GetAbilityProgressionInfo
+-- local GetAbilityProgressionXPInfoFromAbilityId = GetAbilityProgressionXPInfoFromAbilityId
+-- local GetAbilityRoles = GetAbilityRoles
+-- local GetAbilityTargetDescription = GetAbilityTargetDescription
+-- local GetNumSkillAbilities = GetNumSkillAbilities
+-- local GetNumSkillTypes = GetNumSkillTypes
+-- local GetNumSkillLines = GetNumSkillLines
+-- local GetProgressionSkillProgressionIndex = GetProgressionSkillProgressionIndex
+-- local GetSkillLineDynamicInfo = GetSkillLineDynamicInfo
+-- local GetSkillLineId = GetSkillLineId
+-- local GetSkillLineNameById = GetSkillLineNameById
+-- local GetSkillAbilityInfo = GetSkillAbilityInfo
+-- local GetSkillAbilityIndicesFromProgressionIndex = GetSkillAbilityIndicesFromProgressionIndex
 
-local function CacheAbility(id)
+local function CacheAbility(id, slot)
 
 	local o = { }
+	
+	if lib._state.cache.abilities.availableAbilities[id] then return lib._state.cache.abilities.availableAbilities[id] end
 	
     o.id = id
     o.name = zo_strformat(SI_ABILITY_NAME, GetAbilityName(id))
@@ -120,12 +122,12 @@ local function CacheAbility(id)
 	
 	o.isUltimate = IsAbilityUltimate(id)
 
-    o.ground = o.target == str.TARGET_CONSTANTS.ground
-    o.enemy = o.target == str.TARGET_CONSTANTS.enemy
-    o.ally = o.target == str.TARGET_CONSTANTS.ally
+    o.ground = o.target == conStr.TARGET_CONSTANTS.ground
+    o.enemy = o.target == conStr.TARGET_CONSTANTS.enemy
+    o.ally = o.target == conStr.TARGET_CONSTANTS.ally
     
-    o.isMendWounds = a.MEND_WOUNDS[id] or false
-    o.isMeditate = a.MEDITATE[id] or false
+    o.isMendWounds = conA.MEND_WOUNDS[id] or false
+    o.isMeditate = conA.MEDITATE[id] or false
     if o.isMeditate then o.delay = 1000 end
     
     o.checkForDeadTarget = ((o.enemy or o.ally) and duration > 1000) or (o.isMendWounds)
@@ -140,6 +142,23 @@ local function CacheAbility(id)
 
         o.baseId = GetAbilityProgressionAbilityId(o.progressionIndex, 0, 1)
     end
+	
+	o.light = slot == 1 or false
+	o.heavy = slot == 2 or false
+	
+	-- write ability in the abilities table
+	if not lib._state.cache.abilities.availableAbilities then lib._state.cache.abilities.availableAbilities = {} end
+	lib._state.cache.abilities.availableAbilities[id] = o
+	
+	-- since we only want to cache it for future use this table is sufficient
+	
+	-- if not lib._state.cache.abilities.availableActiveAbilities then lib._state.cache.abilities.availableActiveAbilities = {} end
+	-- lib._state.cache.abilities.availableActiveAbilities[id] = o
+	-- if isUltimate then
+		-- if not lib._state.cache.abilities.availableUltimates then lib._state.cache.abilities.availableUltimates = {} end
+		-- lib._state.cache.abilities.availableUltimates[id] = o
+	-- end
+	-- if o.light or o.heavy then lib._state.cache.weaponAbilities[id] = o end
 
     return o
 end
@@ -160,7 +179,7 @@ local function GetSkillLineData(prevSL)
 	}
 	
     for skillType = 1, GetNumSkillTypes() do
-		local skillTypeString = str.SKILL_TYPE_STRING[skillType]
+		local skillTypeString = conStr.SKILL_TYPE_STRING[skillType]
 		
         for skillLineIndex = 1, GetNumSkillLines(skillType) do
             local _, _, isActive = GetSkillLineDynamicInfo(skillType, skillLineIndex)
@@ -178,16 +197,16 @@ local function GetSkillLineData(prevSL)
                     classId = GetSkillLineClassId(skillType, skillLineIndex)
 					if not sl.activeSkillLineClassIds[classId] then
 						sl.activeSkillLineClassIds[classId] = {}
-						sl.activeSkillLineClasses[str.CLASS[classId]] = {}
+						sl.activeSkillLineClasses[conStr.CLASS[classId]] = {}
 					end
-					sl.activeSkillLineClasses[str.CLASS[classId]][skillLineId] = true
+					sl.activeSkillLineClasses[conStr.CLASS[classId]][skillLineId] = true
 					sl.activeSkillLineClassIds[classId][skillLineId] = true
-                    sl.classSkillLineIds[skillLineId] = str.CLASS[classId]
+                    sl.classSkillLineIds[skillLineId] = conStr.CLASS[classId]
                 end
 				
                 sl.skillLineNames[skillLineId] = name
                 sl.skillLineIds[skillLineId] = 	prevSL.skillLineIds and prevSL.skillLineIds[skillLineId] or 
-												{ name = name, isClassSkillLine = isClassSkillLine, classId = classId, classString = str.CLASS[classId], skillLineIndex = skillLineIndex, skillType = skillType, skillTypeString = skillTypeString }
+												{ name = name, isClassSkillLine = isClassSkillLine, classId = classId, classString = conStr.CLASS[classId], skillLineIndex = skillLineIndex, skillType = skillType, skillTypeString = skillTypeString }
             end
         end
     end
@@ -312,7 +331,7 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 					local _,index = GetAbilityProgressionXPInfoFromAbilityId(id)
 					ability.skillType, ability.skillLineIndex, ability.skillIndex = GetSkillAbilityIndicesFromProgressionIndex(index)
 					ability.skillLineId = GetSkillLineId(ability.skillType, ability.skillLineIndex)
-					ability.skillTypeString = str.SKILL_TYPE_STRING[skillType]
+					ability.skillTypeString = conStr.SKILL_TYPE_STRING[skillType]
 					if skillType == SKILL_TYPE_CLASS then
 						ability.classId = skillLineIds[ability.skillLineId].classId
 						ability.class = skillLineIds[ability.skillLineId].classString
@@ -349,12 +368,7 @@ local function GetWeaponAbilities(prev)
 		for slot = 1, 2 do
 			local slotId = GetSlotBoundId(slot, bar)
 			if slotId ~= 0 and not wa[slotId] then
-				local ability = prev[slotId] or CacheAbility(slotId)
-				if slot == 1 then
-					ability.light = true
-				elseif slot == 2 then
-					ability.heavy = true
-				end
+				local ability = prev[slotId] or CacheAbility(slotId, slot)
 				wa[slotId] = ability
 			end
 		end
@@ -477,12 +491,18 @@ local function DidWeaponAbilitiesChange(prev, new)
 	return false
 end
 
-local function FireCallbacks(eventName)
+local function FireCallbacks(eventName, lookupTable)
     local list = lib._state.callbacks[eventName]
     if not list then return end
 	
     for i = 1, #list do
-        list[i]()
+		local callbackName, id, func = list[i].callbackName, list[i].arg, list[i].func
+		local isInList = lookupTable[id] and true or false
+		if list[i].lastState ~= isInList then
+			info(string.format("Firing callback #%d: '%s'", i, callbackName))
+			func(eventName, isInList)
+			list[i].lastState = isInList
+		end
     end
 end
 
@@ -490,7 +510,8 @@ local function HandleSkillLineChange(prev, new)
 	if DidSkillLinesChange(prev, new) then
 		info("SkillLines changed")
 		dbg("Trying to fire callback for skillLines")
-		FireCallbacks(e.SKILLLINES_CHANGED)
+		FireCallbacks(conE.Skillline_Available, new)
+		CALLBACK_MANAGER:FireCallbacks("LibAbilities_Skilllines_Changed")
 	else
 		info("SkillLines did not change. No need to fire callback")
 	end
@@ -500,7 +521,8 @@ local function HandleAbilityChange(prev, new)
 	if DidAbilitiesChange(prev, new) then
 		info("Abilities changed")
 		dbg("Trying to fire callback for abilities")
-		FireCallbacks(e.ABILITIES_CHANGED)
+		FireCallbacks(conE.Ability_Available, new)
+		CALLBACK_MANAGER:FireCallbacks("LibAbilities_Abilities_Changed")
 	else
 		info("Abilities did not change. No need to fire callback")
 	end
@@ -510,7 +532,8 @@ local function HandleSlottedAbilityChange(prev, new)
 	if DidSlottedAbilitiesChange(prev, new) then
 		info("Slotted abilities changed")
 		dbg("Trying to fire callback for slotted abilities")
-		FireCallbacks(e.SLOTTED_ABILITIES_CHANGED)
+		FireCallbacks(conE.Ability_Slotted, new.list)
+		CALLBACK_MANAGER:FireCallbacks("LibAbilities_Slotted_Abilities_Changed")
 	else
 		info("Slotted abilities did not change. No need to fire callback")
 	end
@@ -520,7 +543,8 @@ local function HandleWeaponAbilityChange(prev, new)
 	if DidWeaponAbilitiesChange(prev, new) then
 		info("Weapon abilities changed")
 		dbg("Trying to fire callback for weaponAbilities")
-		FireCallbacks(e.WEAPON_ABILITIES_CHANGED)
+		-- FireCallbacks(conE.WEAPON_ABILITIES_CHANGED)
+		CALLBACK_MANAGER:FireCallbacks("LibAbilities_Weapon_Abilities_Changed")
 	else
 		info("weaponAbilities did not change. No need to fire callback")
 	end

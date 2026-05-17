@@ -9,19 +9,23 @@ local str = lib._constants.strings
 local e = lib._constants.events
 
 ------------------------------------------------------
--- CALLBACK ENUMS
+-- CALLBACK STRINGS
 ------------------------------------------------------
-
-local ABILITIES_CHANGED = 1
-local SKILLLINES_CHANGED = 2
-local SLOTTED_ABILITIES_CHANGED = 3
-local WEAPON_ABILITIES_CHANGED = 4
 	
 e = {
-	ABILITIES_CHANGED = ABILITIES_CHANGED,
-	SKILLLINES_CHANGED = SKILLLINES_CHANGED,
-	SLOTTED_ABILITIES_CHANGED = SLOTTED_ABILITES_CHANGED,
-	WEAPON_ABILITIES_CHANGED = WEAPON_ABILITIES_CHANGED,
+	-- Generally available callback strings via CALLBACK_MANAGER
+	--
+	-- LibAbilities_Abilities_Changed = "LibAbilities_Abilities_Changed",
+	-- LibAbilities_Skilllines_Changed = "LibAbilities_Skilllines_Changed",
+	-- LibAbilities_Slotted_Abilities_Changed = "LibAbilities_Slotted_Abilities_Changed",
+	-- LibAbilities_WeaponAbilities_Changed = "LibAbilities_WeaponAbilities_Changed",
+	
+	
+	-- Callback events registered in the library
+	
+	Skillline_Available = "Skillline_Available",
+	Ability_Available = "Ability_Available",
+	Ability_Slotted = "Ability_Slotted"	
 }
 
 ------------------------------------------------------

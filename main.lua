@@ -16,7 +16,20 @@ _G[LIB_NAME] = lib
 
 lib._state = {
 	initialized = false,
-	cache = { skillLines = {}, abilities = {}, actionSlots = {}, weaponAbilities = {} },
+	cache = { 	skillLines = {	skillLineIds = {},
+								skillLineNames = {},
+								classSkillLineIds = {},
+								activeSkillLineClassIds = {},
+								activeSkillLineClasses = {},},
+				abilities = {	availableActiveAbilities = {},
+								availablePassives = {},
+								availableUltimates = {},
+								availableAbilities = {},},
+				actionSlots = {	frontbar = {},
+								backbar = {},
+								list = {},},
+				weaponAbilities = {}
+			},
 	weaponSwap = 0,
 	lastCache = { complete = 0, weaponAbilities = 0 },
 	callbacks = {},
