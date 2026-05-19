@@ -612,9 +612,9 @@ function lib:_RegisterEvents()
 		zo_callLater(function() self:_BuildCache() end, 10)
     end)
 	
-	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTIVE_WEAPON_PAIR_CHANGED, function()
+	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_SLOTS_ACTIVE_HOTBAR_UPDATED, function(_,didActiveHotbarChange)
 		-- getting time to prevent unneccesary updates of weaponAbilities
-		lib._state.weaponSwap = GetFrameTimeMilliseconds()
+		if didActiveHotbarChange then lib._state.weaponSwap = GetFrameTimeMilliseconds() end
 	end)
 	
 	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_HOTBAR_SLOT_UPDATED, function(_,slot,_,_)
@@ -637,6 +637,9 @@ function lib:_RegisterEvents()
 			HandleWeaponAbilityChange(prevWA, weaponAbilities)
 			lib._state.cache.weaponAbilities = weaponAbilities
 			lib._state.lastCache.weaponAbilities = time
+		elseif slot > 2 and slot < 9 then
+			local actionSlots = GetSlottedAbilities(self._state.cache.abilities.availableAbilities, self._state.cache.skillLines.skillLineIds)
+			HandleSlottedAbilityChange(self._state.cache.actionSlots, actionSlots)
 		end
     end)
 end
