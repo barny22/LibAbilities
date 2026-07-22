@@ -258,6 +258,7 @@ end
 -- "Skillline_Available" -- SKILLLINES_CHANGED
 -- "Ability_Available" -- AVAILABLE_ABILITIES_CHANGED
 -- "Ability_Slotted" -- ABILITIES_SLOTTED_CHANGED
+-- "Actively_Slotted" -- ACTIVELY_SLOTTED_ABILITES_CHANGED
 --
 -- Parameters:	callbackName string: your chosen identifier string
 --				func function: your chosen function to be executed

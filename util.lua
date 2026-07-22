@@ -65,6 +65,17 @@ end
 -- Internal utility
 ------------------------------------------------------
 
+
+local hotbars = {
+	[0] = "frontbar",
+	[1] = "backbar",
+	[5] = "champion",
+	[6] = "artifact",
+	[7] = "overload",
+	[8] = "werewolf",
+	[9] = "temp",
+}
+
 -- local GetFrameTimeMilliseconds = GetFrameTimeMilliseconds
 
 -- local GetAbilityBuffType = GetAbilityBuffType
@@ -315,15 +326,16 @@ end
 
 local function GetSlottedAbilities(abilities, skillLineIds)
 	asdbg("Starting slotted ability caching process")
-	local actionSlots = { frontbar = {}, backbar = {}, list = {} }  -- Create a table to store action slots
-
-    for bar = 0, 1 do
+	local actionSlots = { list = {} }  -- Create a table to store action slots
+	
+    for category, bar in pairs(hotbars) do
+		if not actionSlots[bar] then actionSlots[bar] = {} end
         for slot = 3, 8 do
-			local slotType = GetSlotType(slot, bar)
-			local slotId = GetSlotBoundId(slot, bar)
+			local slotType = GetSlotType(slot, category)
+			local slotId = GetSlotBoundId(slot, category)
 			local id = slotType == ACTION_TYPE_CRAFTED_ABILITY and GetAbilityIdForCraftedAbilityId(slotId) or slotId
 			local actualSlot = slot - 2
-			if id ~= 0 then
+			if id and id ~= 0 then
 				local ability = abilities[id] 
 				if not ability then
 					aswarn("Couldn't find slotted ability in cache. Will cache seperately.")
@@ -340,14 +352,16 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 					skillLineIds[ability.skillLineId].abilities[id] = ability
 					aswarn(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
 				end
-				asinfo(string.format("Caching slot %d %d - %s (%d)", bar, actualSlot, ability.name, id))
-				if bar == 0 then
-					actionSlots.frontbar[actualSlot] = ability
-					ability.slot = string.format("Frontbar %d", actualSlot)
-				else
-					actionSlots.backbar[actualSlot] = ability
-					ability.slot = string.format("Backbar %d", actualSlot)
-				end
+				asinfo(string.format("Caching slot %s %d - %s (%d)", bar, actualSlot, ability.name, id))
+				-- if bar == 0 then
+					-- actionSlots.frontbar[actualSlot] = ability
+					-- ability.slot = string.format("Frontbar %d", actualSlot)
+				-- else
+					-- actionSlots.backbar[actualSlot] = ability
+					-- ability.slot = string.format("Backbar %d", actualSlot)
+				-- end
+				actionSlots[bar][actualSlot] = ability
+				ability.slot = string.format("%s %d", bar, actualSlot)
 				if not actionSlots.list[id] then actionSlots.list[id] = ability end
 			end
         end
@@ -364,10 +378,10 @@ local function GetWeaponAbilities(prev)
 	asdbg("Starting weapon ability caching process")
 	local wa = {}
 	
-	for bar = 0, 1 do
+	for category, bar in pairs(hotbars) do
 		for slot = 1, 2 do
-			local slotId = GetSlotBoundId(slot, bar)
-			if slotId ~= 0 and not wa[slotId] then
+			local slotId = GetSlotBoundId(slot, category)
+			if slotId and slotId ~= 0 and not wa[slotId] then
 				local ability = prev[slotId] or CacheAbility(slotId, slot)
 				wa[slotId] = ability
 			end
@@ -379,6 +393,28 @@ end
 
 function u.GetWeaponAbilities(prev)
 	return GetWeaponAbilities(prev)
+end
+
+local function GetActiveSlots(hotbar)
+	local as = lib._state.cache.actionSlots
+	as.activelySlotted = {}
+	
+	if hotbar == 0 or hotbar == 1 then
+		for bar = 0, 1 do
+			for slot, ability in ipairs(as[hotbars[bar]]) do
+				local actualSlot = string.format("%s %d", hotbars[bar], slot)
+				as.activelySlotted[actualSlot] = ability
+			end
+		end
+	else
+		for slot, ability in ipairs(as[hotbars[hotbar]]) do
+			as.activelySlotted[slot] = ability
+		end
+	end
+end
+
+function u.GetActiveSlots(hotbar)
+	return GetActiveSlots(hotbar)
 end
 
 local function DidSkillLinesChange(prev, new)
@@ -471,6 +507,42 @@ local function DidSlottedAbilitiesChange(prev, new)
 	return false
 end
 
+local function DidActivelySlottedChange(prev, new)
+	if not prev or not next(prev) then
+		return true
+	end
+	
+	if #prev ~= #new then
+		return true
+	end
+	
+	local changeDetected = false
+	
+	for _, ability in pairs(prev) do
+		changeDetected = true
+		for _, a in pairs(new) do
+			if ability.id == a.id then
+				changeDetected = false
+				break
+			end
+		end
+		if changeDetected then return true end
+	end
+	
+	-- for _, ability in pairs(new) do
+		-- changeDetected = true
+		-- for _, a in pairs(prev) do
+			-- if ability.id == a.id then
+				-- changeDetected = false
+				-- break
+			-- end
+		-- end
+		-- if changeDetected then return true end
+	-- end 
+	
+	return false
+end
+
 local function DidWeaponAbilitiesChange(prev, new)
 	if not next(prev) then
         return true
@@ -539,6 +611,17 @@ local function HandleSlottedAbilityChange(prev, new)
 	end
 end
 
+local function HandleActivelySlottedChange(prev, new)
+	if DidActivelySlottedChange(prev, new) then
+		info("Actively slotted abilities changed")
+		dbg("Trying to fire callback for actively slotted abilities")
+		FireCallbacks(conE.Actively_Slotted, new)
+		CALLBACK_MANAGER:FireCallbacks("LibAbilities_Actively_Slotted_Abilities_Changed")
+	else
+		info("Actively slotted abilities did not change. No need to fire callbacks")
+	end
+end
+
 local function HandleWeaponAbilityChange(prev, new)
 	if DidWeaponAbilitiesChange(prev, new) then
 		info("Weapon abilities changed")
@@ -576,6 +659,7 @@ function lib:_BuildCache()
 	local abilities = GetAbilityData(prev.abilities, skillLines.skillLineIds)
 	local actionSlots = GetSlottedAbilities(abilities.availableAbilities, skillLines.skillLineIds)
 	local weaponAbilities = GetWeaponAbilities(prev.weaponAbilities)
+	GetActiveSlots()
 	
     local c = {
 		skillLines = skillLines,
@@ -585,6 +669,7 @@ function lib:_BuildCache()
     }
 	
 	CheckForChanges(prev, c)
+	HandleActivelySlottedChange(prev.actionSlots.activelySlotted, c.actionSlots.activelySlotted)
 
     lib._state.cache = c
 	lib._state.lastCache.complete = time
@@ -603,18 +688,21 @@ function lib:_RegisterEvents()
         self:_BuildCache()
     end)
 	
-	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_BAR_IS_RESPECCABLE_BAR_STATE_CHANGED, function() -- triggers after transformations
-        self:_BuildCache()
-    end)
+	-- EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_BAR_IS_RESPECCABLE_BAR_STATE_CHANGED, function() -- triggers after transformations
+        -- self:_BuildCache()
+    -- end)
 
     EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ARMORY_BUILD_RESTORE_RESPONSE, function() -- triggers after using the armory
         -- callLater needed, since the abilities are only updated after the event fired
 		zo_callLater(function() self:_BuildCache() end, 10)
     end)
 	
-	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_SLOTS_ACTIVE_HOTBAR_UPDATED, function(_,didActiveHotbarChange)
+	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_SLOTS_ACTIVE_HOTBAR_UPDATED, function(_,didActiveHotbarChange,_,activeHotbar)
 		-- getting time to prevent unneccesary updates of weaponAbilities
-		if didActiveHotbarChange then lib._state.weaponSwap = GetFrameTimeMilliseconds() end
+		if didActiveHotbarChange and (activeHotbar == 1 or activeHotbar == 0) then lib._state.weaponSwap = GetFrameTimeMilliseconds() end
+		local prev = lib._state.cache.actionSlots.activelySlotted
+		GetActiveSlots(activeHotbar)
+		HandleActivelySlottedChange(prev, lib._state.cache.actionSlots.activelySlotted)
 	end)
 	
 	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_HOTBAR_SLOT_UPDATED, function(_,slot,_,_)

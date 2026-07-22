@@ -19,13 +19,15 @@ e = {
 	-- LibAbilities_Skilllines_Changed = "LibAbilities_Skilllines_Changed",
 	-- LibAbilities_Slotted_Abilities_Changed = "LibAbilities_Slotted_Abilities_Changed",
 	-- LibAbilities_WeaponAbilities_Changed = "LibAbilities_WeaponAbilities_Changed",
+	-- LibAbilities_Actively_Slotted_Abilities_Changed = "LibAbilities_Actively_Slotted_Abilities_Changed"
 	
 	
 	-- Callback events registered in the library
 	
 	Skillline_Available = "Skillline_Available",
 	Ability_Available = "Ability_Available",
-	Ability_Slotted = "Ability_Slotted"	
+	Ability_Slotted = "Ability_Slotted",
+	Actively_Slotted = "Actively_Slotted",
 }
 
 ------------------------------------------------------
