@@ -69,7 +69,7 @@ end
 local hotbars = {
 	[0] = "frontbar",
 	[1] = "backbar",
-	[5] = "champion",
+	-- [5] = "champion",
 	[6] = "artifact",
 	[7] = "overload",
 	[8] = "werewolf",
@@ -349,7 +349,7 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 						ability.class = skillLineIds[ability.skillLineId].classString
 					end
 					abilities[id] = ability
-					skillLineIds[ability.skillLineId].abilities[id] = ability
+					if ability.skillLineId then skillLineIds[ability.skillLineId].abilities[id] = ability end
 					aswarn(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
 				end
 				asinfo(string.format("Caching slot %s %d - %s (%d)", bar, actualSlot, ability.name, id))
@@ -370,8 +370,8 @@ local function GetSlottedAbilities(abilities, skillLineIds)
     return actionSlots
 end
 
-function u.GetSlottedAbilities(abilities)
-	return GetSlottedAbilities(abilities)
+function u.GetSlottedAbilities(abilities, skillLineIds)
+	return GetSlottedAbilities(abilities, skillLineIds)
 end
 
 local function GetWeaponAbilities(prev)
@@ -659,7 +659,6 @@ function lib:_BuildCache()
 	local abilities = GetAbilityData(prev.abilities, skillLines.skillLineIds)
 	local actionSlots = GetSlottedAbilities(abilities.availableAbilities, skillLines.skillLineIds)
 	local weaponAbilities = GetWeaponAbilities(prev.weaponAbilities)
-	GetActiveSlots()
 	
     local c = {
 		skillLines = skillLines,
@@ -669,9 +668,12 @@ function lib:_BuildCache()
     }
 	
 	CheckForChanges(prev, c)
-	HandleActivelySlottedChange(prev.actionSlots.activelySlotted, c.actionSlots.activelySlotted)
 
     lib._state.cache = c
+	
+	GetActiveSlots(self._state.activeHotbar)
+	HandleActivelySlottedChange(prev.actionSlots.activelySlotted, c.actionSlots.activelySlotted)
+	
 	lib._state.lastCache.complete = time
 	lib._state.lastCache.weaponAbilities = time
 	local endTime = GetFrameTimeMilliseconds()
@@ -698,11 +700,17 @@ function lib:_RegisterEvents()
     end)
 	
 	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_ACTION_SLOTS_ACTIVE_HOTBAR_UPDATED, function(_,didActiveHotbarChange,_,activeHotbar)
+		if not didActiveHotbarChange then return end
+		
 		-- getting time to prevent unneccesary updates of weaponAbilities
-		if didActiveHotbarChange and (activeHotbar == 1 or activeHotbar == 0) then lib._state.weaponSwap = GetFrameTimeMilliseconds() end
-		local prev = lib._state.cache.actionSlots.activelySlotted
-		GetActiveSlots(activeHotbar)
-		HandleActivelySlottedChange(prev, lib._state.cache.actionSlots.activelySlotted)
+		if (lib._state.activeHotbar == 1 or lib._state.activeHotbar == 0) and (activeHotbar == 1 or activeHotbar == 0) then
+			lib._state.weaponSwap = GetFrameTimeMilliseconds()
+		else
+			local prev = lib._state.cache.actionSlots.activelySlotted
+			GetActiveSlots(activeHotbar)
+			HandleActivelySlottedChange(prev, lib._state.cache.actionSlots.activelySlotted)
+		end
+		lib._state.activeHotbar = activeHotbar
 	end)
 	
 	EVENT_MANAGER:RegisterForEvent(self.name, EVENT_HOTBAR_SLOT_UPDATED, function(_,slot,_,_)
@@ -728,6 +736,7 @@ function lib:_RegisterEvents()
 		elseif slot > 2 and slot < 9 then
 			local actionSlots = GetSlottedAbilities(self._state.cache.abilities.availableAbilities, self._state.cache.skillLines.skillLineIds)
 			HandleSlottedAbilityChange(self._state.cache.actionSlots, actionSlots)
+			lib._state.cache.actionSlots = actionSlots
 		end
     end)
 end

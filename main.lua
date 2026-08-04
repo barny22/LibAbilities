@@ -16,6 +16,7 @@ _G[LIB_NAME] = lib
 
 lib._state = {
 	initialized = false,
+	activeHotbar = GetActiveHotbarCategory(),
 	cache = { 	skillLines = {	skillLineIds = {},
 								skillLineNames = {},
 								classSkillLineIds = {},
