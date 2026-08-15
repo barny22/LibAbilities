@@ -349,7 +349,7 @@ local function GetSlottedAbilities(abilities, skillLineIds)
 						ability.class = skillLineIds[ability.skillLineId].classString
 					end
 					abilities[id] = ability
-					if ability.skillLineId then skillLineIds[ability.skillLineId].abilities[id] = ability end
+					if ability.skillLineId and skillLineIds[ability.skillLineId] then skillLineIds[ability.skillLineId].abilities[id] = ability end
 					aswarn(string.format("Ability found. ID: %d Name: %s",ability.id,ability.name))
 				end
 				asinfo(string.format("Caching slot %s %d - %s (%d)", bar, actualSlot, ability.name, id))
@@ -647,10 +647,12 @@ end
 function lib:_BuildCache()
 	local time = GetFrameTimeMilliseconds()
 	
-	if time == self._state.lastCache.complete then
-		dbg("Building cache not needed, just did that")
+	if time == self._state.lastCache.complete or lib._state.lastCache.ongoing then
+		dbg("Building cache not needed, just did that or is ongoing")
 		return
 	end
+	
+	lib._state.lastCache.ongoing = true
 	dbg(string.format("Building cache at %d", time))
 	
 	local prev = self._state.cache
@@ -679,6 +681,8 @@ function lib:_BuildCache()
 	local endTime = GetFrameTimeMilliseconds()
 	dbg(string.format("Building cache finished at %d", endTime))
 	info(string.format("Building cache took %dms", endTime-time))
+	
+	lib._state.lastCache.ongoing = false
 end
 
 function lib:_RegisterEvents()	
